@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Калькулятор лечебной смеси (ФКУ)</title>
+<style>
+:root{
+  --bg:#f4f6fb; --card:#ffffff; --ink:#1c2333; --muted:#5b6478;
+  --accent:#0b57d0; --accent-soft:#e8f0fe; --ok:#1a7f37; --warn:#b3261e;
+  --line:#e3e7f0; --radius:16px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0; background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;}
+.wrap{max-width:430px; margin:0 auto; padding:14px 14px 40px;}
+h1{font-size:1.25rem; margin:6px 0 2px;}
+.sub{color:var(--muted); font-size:.85rem; margin:0 0 14px;}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(20,30,60,.06);}
+label{display:block; font-size:.83rem; color:var(--muted); margin:10px 0 4px; font-weight:600;}
+label:first-child{margin-top:0;}
+input[type=number]{width:100%; padding:11px 12px; font-size:1.1rem; border:1.5px solid var(--line);
+  border-radius:12px; background:#fafbfe; color:var(--ink);}
+input[type=number]:focus{outline:none; border-color:var(--accent); background:#fff;}
+.seg{display:flex; background:var(--accent-soft); border-radius:12px; padding:3px; margin-top:6px;}
+.seg button{flex:1; border:none; background:transparent; padding:9px 4px; font-size:.88rem;
+  border-radius:10px; color:var(--muted); font-weight:600; cursor:pointer;}
+.seg button.active{background:var(--accent); color:#fff;}
+.row{display:flex; gap:10px;}
+.row>div{flex:1;}
+.res-tile{background:linear-gradient(135deg,#e8f0fe,#f3ecfd); border-radius:14px;
+  padding:12px 14px; margin-bottom:10px;}
+.res-tile .big{font-size:1.7rem; font-weight:800; color:var(--accent);}
+.res-tile .unit{font-size:.95rem; font-weight:600; color:var(--muted); margin-left:4px;}
+.res-tile .cap{font-size:.8rem; color:var(--muted); margin-bottom:2px;}
+.res-tile.alt{background:#f0faf3;}
+.res-tile.alt .big{color:var(--ok);}
+.warn{background:#fdeceb; color:var(--warn); border-radius:12px; padding:10px 12px;
+  font-size:.88rem; margin-top:8px; display:none;}
+details{border-top:1px dashed var(--line); margin-top:12px; padding-top:10px;}
+details summary{cursor:pointer; font-weight:700; font-size:.92rem; color:var(--accent);}
+.step{display:flex; justify-content:space-between; gap:8px; padding:7px 0;
+  border-bottom:1px dotted var(--line); font-size:.9rem;}
+.step:last-child{border-bottom:none;}
+.step .formula{color:var(--muted); font-size:.78rem; margin-top:2px;}
+.step .val{font-weight:700; white-space:nowrap;}
+.btns{display:flex; gap:10px; margin-top:4px;}
+.btn{flex:1; border:none; border-radius:12px; padding:13px 8px; font-size:.95rem;
+  font-weight:700; cursor:pointer;}
+.btn.primary{background:var(--accent); color:#fff;}
+.btn.secondary{background:var(--accent-soft); color:var(--accent);}
+.btn:active{transform:scale(.98);}
+.note{font-size:.78rem; color:var(--muted); margin-top:10px; line-height:1.45;}
+details.help{border:none; margin-top:0;}
+details.help summary{color:var(--ink);}
+.help p, .help li{font-size:.88rem; line-height:1.5; color:#333;}
+.settings-grid{display:flex; flex-direction:column; gap:4px;}
+.disc{font-size:.72rem; color:var(--muted); text-align:center; margin-top:16px; line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap" id="card">
+  <h1>🧮 Калькулятор лечебной смеси</h1>
+  <p class="sub">Расчёт лечебного белка и воды при ФКУ</p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="w">Вес ребёнка, кг</label>
+        <input type="number" id="w" step="0.01" min="0" inputmode="decimal" value="18.5">
+      </div>
+      <div>
+        <label for="feeds">Кормлений в сутки</label>
+        <input type="number" id="feeds" step="1" min="1" inputmode="numeric" value="5">
+      </div>
+    </div>
+
+    <label for="prot">Белок, г на кг веса в сутки</label>
+    <input type="number" id="prot" step="0.01" min="0" inputmode="decimal" value="2.2">
+
+    <label style="margin-top:14px">Фенилаланин (ФА) — как назначено</label>
+    <div class="seg" role="tablist">
+      <button type="button" id="modePerKg" class="active" onclick="setMode('perkg')">на кг веса</button>
+      <button type="button" id="modeTotal" onclick="setMode('total')">всего мг в сутки</button>
+    </div>
+    <div id="perkgBox">
+      <label for="faPerKg">ФА, мг на кг веса в сутки</label>
+      <input type="number" id="faPerKg" step="0.01" min="0" inputmode="decimal" value="16.5">
+    </div>
+    <div id="totalBox" style="display:none">
+      <label for="faTotal">ФА, всего мг в сутки</label>
+      <input type="number" id="faTotal" step="1" min="0" inputmode="decimal" value="305.25">
+    </div>
+
+    <details id="setBox" style="margin-top:12px">
+      <summary>⚙️ Настройки смеси</summary>
+      <div class="settings-grid">
+        <label for="faPerProt">ФА, мг на 1 г натурального белка</label>
+        <input type="number" id="faPerProt" step="1" min="1" value="50">
+        <label for="protIn100">Белок в смеси, г на 100 г порошка</label>
+        <input type="number" id="protIn100" step="0.1" min="1" value="27">
+        <div class="row">
+          <div>
+            <label for="dilPowder">Разведение: порошок, г</label>
+            <input type="number" id="dilPowder" step="1" min="1" value="100">
+          </div>
+          <div>
+            <label for="dilWater">вода, мл</label>
+            <input type="number" id="dilWater" step="1" min="1" value="400">
+          </div>
+        </div>
+        <label for="corr">Поправка на весах, г на порцию (может быть с минусом)</label>
+        <input type="number" id="corr" step="1" value="-3">
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="res-tile">
+      <div class="cap">Смеси на одно кормление</div>
+      <div><span class="big" id="rPowder">—</span><span class="unit">г порошка</span></div>
+      <div class="cap" style="margin-top:6px">Вода по шкале: <b id="rWater">—</b> мл</div>
+      <div class="cap" id="rScaleRow">На весах: <b id="rScale">—</b> г</div>
+    </div>
+    <div class="res-tile alt">
+      <div class="cap">За сутки</div>
+      <div><span class="big" id="rDay">—</span><span class="unit">г порошка</span></div>
+    </div>
+    <div class="warn" id="warnBox"></div>
+
+    <div class="btns">
+      <button class="btn primary" id="btnShot">📸 Скриншот</button>
+      <button class="btn secondary" id="btnShare">↗️ Поделиться</button>
+    </div>
+
+    <details open style="margin-top:12px">
+      <summary>Детали расчёта</summary>
+      <div id="steps"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <details class="help">
+      <summary>❓ Как пользоваться</summary>
+      <ol>
+        <li>Введите вес ребёнка (в кг), норму белка (г на кг в сутки) и число кормлений.</li>
+        <li>Выберите режим ФА: «на кг веса» — если врач назначил мг на кг, или «всего мг в сутки» — если названа общая цифра (например, при изменении переносимости).</li>
+        <li>Результат пересчитывается сразу: порошок на кормление с точностью до сотых, вода — округлённая до грамма, плюс строка «на весах» с поправкой.</li>
+        <li>В «⚙️ Настройках смеси» при необходимости поменяйте: сколько мг ФА «стоит» 1 г натурального белка (по умолчанию 50), содержание белка в порошке (27 г на 100 г) и разведение (100 г → 400 мл).</li>
+        <li>Кнопка «Скриншот» сохранит карточку с расчётом картинкой, «Поделиться» отправит текст расчёта в мессенджер или скопирует его.</li>
+      </ol>
+      <p><b>Важно:</b> нормы белка и ФА назначает врач. Перед изменением переносимости или заменой смеси обязательно сверяйтесь с лечащим врачом.</p>
+    </details>
+  </div>
+
+  <p class="disc">Калькулятор — вспомогательный инструмент. Решение о питании принимает лечащий врач.</p>
+</div>
+
+<script>
+function $(id){return document.getElementById(id);}
+function num(id){var v=parseFloat($(id).value); return isFinite(v)?v:0;}
+var faMode='perkg';
+
+function setMode(m){
+  faMode=m;
+  $('modePerKg').classList.toggle('active', m==='perkg');
+  $('modeTotal').classList.toggle('active', m==='total');
+  $('perkgBox').style.display = m==='perkg' ? '' : 'none';
+  $('totalBox').style.display = m==='total' ? '' : 'none';
+  calc();
+}
+['w','feeds','prot','faPerKg','faTotal','faPerProt','protIn100','dilPowder','dilWater','corr']
+ .forEach(function(id){ $(id).addEventListener('input', calc); });
+
+function fmt(x,d){ return x.toFixed(d).replace('.',','); }
+
+function calc(){
+  var w=num('w'), feeds=Math.max(1,Math.round(num('feeds'))), prot=num('prot');
+  var faPerProt=num('faPerProt')||50, protIn100=num('protIn100')||27;
+  var dP=num('dilPowder')||100, dW=num('dilWater')||400, corr=num('corr');
+
+  var totalProt=w*prot;
+  var fa = faMode==='perkg' ? w*num('faPerKg') : num('faTotal');
+  var natProt = fa/faPerProt;
+  var mixProt = totalProt-natProt;
+  var powderDay = protIn100>0 ? mixProt*100/protIn100 : 0;
+  var powderFeed = powderDay/feeds;
+  var water = powderFeed*dW/dP;
+  var waterR = Math.round(water);
+  var scale = Math.round(water+corr);
+
+  $('rPowder').textContent=fmt(powderFeed,2);
+  $('rWater').textContent=waterR;
+  $('rScale').textContent=scale;
+  $('rDay').textContent=fmt(powderDay,2);
+  $('rDay').parentElement.parentElement.style.display = (dP!==100||dW!==400)?'':'none';
+
+  var wb=$('warnBox');
+  if(natProt>totalProt && totalProt>0){
+    wb.style.display='block';
+    wb.textContent='⚠ Натуральный белок по назначенному ФА ('+fmt(natProt,2)+' г) больше суточной нормы белка ('+fmt(totalProt,2)+' г). Проверьте ввод и уточните расчёт у врача.';
+  } else { wb.style.display='none'; }
+
+  var faLabel = faMode==='perkg'
+    ? w+' кг × '+fmt(num('faPerKg'),2)+' мг/кг'
+    : 'назначено врачом, всего за сутки';
+  var steps=[
+    ['Общий белок за сутки', fmt(totalProt,2)+' г', w+' кг × '+fmt(prot,2)+' г/кг'],
+    ['Допустимый ФА за сутки', fmt(fa,2)+' мг', faLabel],
+    ['Натуральный белок (обычная еда)', fmt(natProt,3)+' г', fmt(fa,2)+' мг ÷ '+fmt(faPerProt,0)+' мг ФА на 1 г белка'],
+    ['Лечебный белок (из смеси)', fmt(mixProt,2)+' г', fmt(totalProt,2)+' г − '+fmt(natProt,3)+' г'],
+    ['Порошка смеси за сутки', fmt(powderDay,2)+' г', fmt(mixProt,2)+' г × 100 ÷ '+fmt(protIn100,0)+' (белок на 100 г порошка)'],
+    ['Порошка на одно кормление', fmt(powderFeed,2)+' г', fmt(powderDay,2)+' г ÷ '+feeds+' кормл.'],
+    ['Вода на кормление', waterR+' мл ('+fmt(water,2)+')', fmt(powderFeed,2)+' г × '+dW+' ÷ '+dP],
+    ['Вода на весах', scale+' г', waterR+' мл '+(corr>=0?'+ ':'− ')+Math.abs(corr)+' г поправки']
+  ];
+  $('steps').innerHTML = steps.map(function(s){
+    return '<div class="step"><div>'+s[0]+'<div class="formula">'+s[2]+'</div></div><div class="val">'+s[1]+'</div></div>';
+  }).join('');
+
+  lastCalc={w:w,feeds:feeds,prot:prot,fa:fa,faLabel:faLabel,totalProt:totalProt,
+    natProt:natProt,mixProt:mixProt,powderDay:powderDay,powderFeed:powderFeed,
+    water:water,waterR:waterR,scale:scale,corr:corr,protIn100:protIn100,
+    faPerProt:faPerProt,dP:dP,dW:dW,faMode:faMode};
+}
+var lastCalc=null;
+
+function summaryText(c){
+  return 'Расчёт лечебной смеси (ФКУ)\n'+
+    'Вес: '+fmt(c.w,2)+' кг; белок '+fmt(c.prot,2)+' г/кг; ФА '+c.faLabel+' = '+fmt(c.fa,2)+' мг/сут; кормлений: '+c.feeds+'\n'+
+    '— Сутки: лечебный белок '+fmt(c.mixProt,2)+' г → порошок '+fmt(c.powderDay,2)+' г\n'+
+    '— Одно кормление: '+fmt(c.powderFeed,2)+' г порошка, вода '+c.waterR+' мл'+(c.corr!==0?', на весах ≈ '+c.scale+' г':'')+'\n'+
+    '(ФА '+fmt(c.faPerProt,0)+' мг на 1 г белка; белок '+fmt(c.protIn100,1)+' г на 100 г порошка; разведение '+c.dP+' г → '+c.dW+' мл)';
+}
+
+$('btnShare').addEventListener('click', function(){
+  if(!lastCalc) return;
+  var text=summaryText(lastCalc);
+  if(navigator.share){
+    navigator.share({title:'Расчёт лечебной смеси', text:text}).catch(function(){});
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){toast('Текст расчёта скопирован');}, function(){fallbackCopy(text);});
+  } else { fallbackCopy(text); }
+});
+function fallbackCopy(text){
+  var ta=document.createElement('textarea'); ta.value=text;
+  ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{document.execCommand('copy'); toast('Текст расчёта скопирован');}
+  catch(e){toast('Не удалось скопировать');}
+  document.body.removeChild(ta);
+}
+var toastTimer=null;
+function toast(msg){
+  var t=$('toast'); if(!t){t=document.createElement('div'); t.id='toast';
+    t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);'+
+    'background:#1c2333;color:#fff;padding:10px 18px;border-radius:20px;font-size:.88rem;z-index:99;';
+    document.body.appendChild(t);}
+  t.textContent=msg; t.style.display='block';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){t.style.display='none';},2500);
+}
+
+/* Скриншот: отрисовка карточки на canvas */
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+$('btnShot').addEventListener('click', function(){
+  if(!lastCalc) return;
+  var c=lastCalc, scaleF=2;
+  var W=720, pad=36, lineH=54;
+  var stepsH=c.natProt>c.totalProt ? 120 : 0;
+  var stepsArr=[
+    ['Общий белок за сутки', fmt(c.totalProt,2)+' г'],
+    ['Допустимый ФА за сутки', fmt(c.fa,2)+' мг'],
+    ['Натуральный белок', fmt(c.natProt,3)+' г'],
+    ['Лечебный белок', fmt(c.mixProt,2)+' г'],
+    ['Порошка за сутки', fmt(c.powderDay,2)+' г'],
+    ['Порошка на кормление', fmt(c.powderFeed,2)+' г'],
+    ['Вода на кормление', c.waterR+' мл']
+  ];
+  var warnH = c.natProt>c.totalProt ? 90 : 0;
+  H = pad + 120 /*header*/ + 2*160 /*tiles*/ + warnH + 50 /*steps title*/ + stepsArr.length*lineH + pad + 60 /*footer*/;
+  var cv=document.createElement('canvas');
+  cv.width=W*scaleF; cv.height=H*scaleF;
+  var ctx=cv.getContext('2d'); ctx.scale(scaleF,scaleF);
+
+  ctx.fillStyle='#f4f6fb'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#1c2333'; ctx.font='700 34px Arial,sans-serif';
+  ctx.fillText('🧮 Расчёт лечебной смеси (ФКУ)', pad, pad+34);
+
+  function tile(y,cap,big,unit,sub,grad){
+    roundRect(ctx,pad,y,W-2*pad,140,20);
+    var g=ctx.createLinearGradient(pad,y,W,y+140);
+    if(grad){g.addColorStop(0,'#e8f0fe'); g.addColorStop(1,'#f3ecfd');}
+    else {g.addColorStop(0,'#eaf7ef'); g.addColorStop(1,'#f2fbf5');}
+    ctx.fillStyle=g; ctx.fill();
+    ctx.fillStyle='#5b6478'; ctx.font='600 22px Arial'; ctx.fillText(cap,pad+22,y+34);
+    ctx.fillStyle=grad?'#0b57d0':'#1a7f37'; ctx.font='800 44px Arial';
+    ctx.fillText(big,pad+22,y+86);
+    var wpx=ctx.measureText(big).width;
+    ctx.fillStyle='#5b6478'; ctx.font='600 22px Arial'; ctx.fillText(unit,pad+30+wpx,y+86);
+    if(sub){ctx.font='600 20px Arial'; ctx.fillText(sub,pad+22,y+122);}
+  }
+  tile(pad+56,'Смеси на одно кормление', fmt(c.powderFeed,2),'г порошка',
+       'Вода по шкале: '+c.waterR+' мл'+(c.corr!==0?'  ·  на весах ≈ '+c.scale+' г':''), true);
+  tile(pad+56+160,'За сутки', fmt(c.powderDay,2),'г порошка', null, false);
+
+  var y=pad+56+2*160+20;
+  if(c.natProt>c.totalProt){
+    roundRect(ctx,pad,y,W-2*pad,66,14); ctx.fillStyle='#fdeceb'; ctx.fill();
+    ctx.fillStyle='#b3261e'; ctx.font='600 20px Arial';
+    ctx.fillText('⚠ Натуральный белок ('+fmt(c.natProt,2)+' г) больше суточной нормы — уточните у врача.',pad+16,y+42);
+    y+=86;
+  }
+  y+=16;
+  ctx.fillStyle='#0b57d0'; ctx.font='700 26px Arial'; ctx.fillText('Детали расчёта',pad,y); y+=18;
+  stepsArr.forEach(function(s){
+    y+=lineH;
+    ctx.strokeStyle='#e3e7f0'; ctx.beginPath(); ctx.moveTo(pad,y-lineH+8); ctx.lineTo(W-pad,y-lineH+8); ctx.stroke();
+    ctx.fillStyle='#1c2333'; ctx.font='600 22px Arial'; ctx.fillText(s[0],pad,y-lineH+34);
+    ctx.fillStyle='#1c2333'; ctx.font='700 24px Arial';
+    ctx.fillText(s[1],W-pad-ctx.measureText(s[1]).width,y-lineH+34);
+  });
+  ctx.fillStyle='#5b6478'; ctx.font='400 18px Arial';
+  ctx.fillText('ФА '+fmt(c.faPerProt,0)+' мг на 1 г белка · белок '+fmt(c.protIn100,1)+' г на 100 г порошка · разведение '+c.dP+' г → '+c.dW+' мл', pad, H-70);
+  ctx.fillText('Вес '+fmt(c.w,2)+' кг · белок '+fmt(c.prot,2)+' г/кг · ФА '+c.faLabel+' · кормлений '+c.feeds, pad, H-42);
+  ctx.fillStyle='#8a93a8'; ctx.font='400 16px Arial';
+  ctx.fillText('Калькулятор — вспомогательный инструмент. Решение о питании принимает лечащий врач.', pad, H-14);
+
+  try{
+    var a=document.createElement('a');
+    a.download='raschet-smesi.png';
+    a.href=cv.toDataURL('image/png');
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Картинка сохраняется в загрузки');
+  }catch(e){
+    toast('Скачивание не удалось — сделайте скриншот кнопками телефона');
+  }
+});
+
+calc();
+</script>
+</body>
+</html>
